@@ -1,3 +1,5 @@
+import Data.List
+
 isPrime :: Int -> Bool
 isPrime n
     | n <= 1 = False
@@ -15,3 +17,6 @@ primeFact 1 = []
 primeFact n = a : primeFact (n `div` a)
     where a = head $ filter divides $ filter isPrime' [2..]
           divides x = n `mod` x == 0 
+
+primeFactMult :: Int -> [(Int, Int)]
+primeFactMult n = (\x -> (head x, length x)) <$> group (primeFact n)
