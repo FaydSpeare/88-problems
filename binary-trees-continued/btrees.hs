@@ -58,3 +58,18 @@ isCompBinTree t = all (h - 1 ==) rest
     where (_, rest) = break (h /=) leaves
           h       = head leaves
           leaves  = getLeafDepths t
+
+filled :: Tree a -> [[Bool]]
+filled Empty = [[False]]
+filled (Branch _ l r) = [True] : zipWith (++) (filled l) (filled r)   
+
+
+type Pos = (Int, Int)
+assignXY :: Tree a -> Int -> Int -> (Tree (a, Pos), Int)
+assignXY Empty x d = (Empty, x)
+assignXY (Branch v l r) x d = (Branch (v, (thisX, d)) left right, nextX)
+    where (left, thisX) = assignXY l x (d+1)
+          (right, nextX) = assignXY r (thisX+1) (d+1)
+
+treeLayout :: Tree a -> Tree (a, Pos)
+treeLayout t = fst $ assignXY t 1 1
