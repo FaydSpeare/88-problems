@@ -23,3 +23,40 @@ cbalTree n
     | odd (n-1)  = [Branch 'x' l r | (y, z) <- xs, l <- cbalTree (fh + y), r <- cbalTree (fh + z)]
         where xs = [(0, 1), (1, 0)]
               fh = (n-1) `div` 2 -- Floor of half
+
+
+isMirror :: Tree a -> Tree a -> Bool
+isMirror Empty Empty = True
+isMirror (Branch _ l1 r1) (Branch _ l2 r2) = isMirror l1 r2 && isMirror l2 r1
+isMirror _ _ = False
+
+
+isSymmetric :: Tree a -> Bool
+isSymmetric Empty = True
+isSymmetric (Branch _ l r) = isMirror l r
+
+
+insertTree :: (Ord a) => Tree a -> a -> Tree a
+insertTree Empty x = Branch x Empty Empty
+insertTree (Branch y left right) x
+    | x == y = Branch y left right
+    | x < y  = Branch y (insertTree left x) right
+    | x > y  = Branch y left (insertTree right x)
+
+
+construct :: (Ord a) => [a] -> Tree a
+construct = foldl insertTree Empty
+
+
+maxHeightTree :: Int -> Tree Char
+maxHeightTree 0 = Empty
+maxHeightTree 1 = Branch 'x' Empty Empty
+maxHeightTree n = Branch 'x' (maxHeightTree (n-1)) (maxHeightTree (n-2))
+
+countNodes :: Tree a -> Int
+countNodes Empty = 0
+countNodes (Branch _ l r) = 1 + countNodes l + countNodes r
+
+minNodes :: Int -> Int
+minNodes n = countNodes . maxHeightTree $ n
+
