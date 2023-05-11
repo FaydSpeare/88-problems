@@ -1,3 +1,6 @@
+import Data.List
+import Data.Function
+
 data Tree a = Empty | Branch a (Tree a) (Tree a)
               deriving (Show, Eq)
 
@@ -134,3 +137,58 @@ assignXY2 h (Branch v l r) x y = (Branch (v, (realX, y)) left right, realX + dia
 treeLayout2 :: Tree a -> Tree (a, Pos)
 treeLayout2 t = fst $ assignXY2 h t 1 1
     where h = findHeight t
+
+type VPos a = (a, (Int, Int))
+
+positions :: Tree (VPos a) -> [Pos]
+positions Empty = []
+positions (Branch (_, p) l r) = p : (positions l ++ positions r)
+
+xByLevel :: Tree (VPos a) -> [[Int]]
+xByLevel Empty = []
+xByLevel t = map (map fst) $ groupSnd $ sortSnd $ positions t 
+    where groupSnd = groupBy (\a b -> snd a == snd b)
+          sortSnd  = sortBy (compare `on` snd) 
+
+leftMost :: Tree (VPos a) -> [Int]
+leftMost t = map minimum $ xByLevel t  
+
+rightMost :: Tree (VPos a) -> [Int]
+rightMost t = map maximum $ xByLevel t
+
+updateX :: Tree (VPos a) -> Int -> Tree (VPos a)
+updateX Empty _ = Empty
+updateX (Branch (v, (_, y)) l r) newX = Branch (v, (newX, y)) newL newR
+    where newL = updateX l (newX-1)
+          newR = updateX r (newX+1)
+
+shiftBy :: Tree (VPos a) -> Int -> Tree (VPos a)
+shiftBy Empty _ = Empty
+shiftBy (Branch (v, (x, y)) l r) n = Branch (v, (x+n, y)) newL newR
+    where newL = shiftBy l n
+          newR = shiftBy r n
+
+tighten :: Tree (VPos a) -> Tree (VPos a)
+tighten (Branch v Empty Empty) = Branch v Empty Empty 
+tighten t@(Branch (_, (x, _)) l Empty) = updateX t x 
+tighten t@(Branch (_, (x, _)) Empty r) = updateX t x
+tighten (Branch v l r) = Branch v (shiftBy l minGap) (shiftBy r (-minGap))
+    where minGap = minimum $ map (\e -> (e - 1) `div` 2) gaps 
+          gaps = [ y - x | (x, y) <- zip (rightMost l) (leftMost r)]
+
+tightenRec :: Tree (VPos a) -> Tree (VPos a)
+tightenRec Empty = Empty
+tightenRec (Branch v l r) = tighten $ Branch v (tightenRec l) (tightenRec r)
+
+lowestX :: Tree (VPos a) -> Int
+lowestX (Branch (_, (x, _)) Empty _) = x
+lowestX (Branch _ l _) = lowestX l 
+
+-- The whole idea here was to take the layout function from q.65
+-- and pull together or 'tighten' the subtrees starting from the leaves.
+tightLayout :: Tree a -> Tree (VPos a)
+tightLayout t = shiftBy tightTree (1 - offset) 
+    where offset    = lowestX tightTree
+          tightTree = tightenRec $ treeLayout2 t
+
+
