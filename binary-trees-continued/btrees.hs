@@ -73,3 +73,64 @@ assignXY (Branch v l r) x d = (Branch (v, (thisX, d)) left right, nextX)
 
 treeLayout :: Tree a -> Tree (a, Pos)
 treeLayout t = fst $ assignXY t 1 1
+
+
+findHeight :: Tree a -> Int
+findHeight Empty = 0
+findHeight (Branch _ l r) = 1 + max (findHeight l) (findHeight r)
+
+-- Another tricky one. Our function takes as parameters the
+-- height of the outer tree, a subtree of the outer tree, 
+-- that tree's x postion and that tree's y position. The 
+-- function then returns the updated tree (Tree (a, Pos)) 
+-- as well as the x position of the parent according to the 
+-- current tree.
+--
+-- The reason we're also returning the parent's x position
+-- has to do with nodes in the tree not knowing what their
+-- actual x position is until we've found the left most node
+-- and labelled it with x=1. So once we do find that left most
+-- node, its parent will be able to update their x positions
+-- relative to that left most node. For all nodes that are not
+-- an ascendant of the left most node we'll see that the x
+-- position we return in the second part of the tuple is
+-- actually just ignored.
+--
+-- Note: I've labelled the x distance between the left and right
+--       subtrees of the current node as the 'diameter'. As such
+--       the left subtree if it exists will have an x position of
+--       currentX - radius, while the right subtree will have an
+--       x position of currentX + radius.
+--
+-- So we start at the root node and just label it with an (x, y)
+-- position of (1, 1) for now. Then we go left recursively (*)
+-- until we reach a node that has an Empty left subtree. When we
+-- call assignXY2 on that Empty subtree is going to give us back
+-- (left, adjX) = (Empty, 1) indicating that its parent's x position
+-- is 1. That node can now call assignXY2 on its right subtree
+-- with an x position of (1 + radius), which will update the nodes
+-- in the right subtree with their correct x position. Then it can
+-- pass its parents position back up to its parent, (which until 
+-- now didn't know its position relative to the left most node.
+-- This happens all the way up the left side of the outer tree, 
+-- back up to the root node, at which point the root node is now
+-- sure of its x position and can call assignXY2 on its right
+-- subtree with x position = rootX + radius. Once the recursion
+-- completes there, we'll have our outer tree in which each node
+-- contains not only the original value, but its (x, y) position too.
+--
+-- realX: this will be equal to adjX only in the left most node 
+--        and all of its ascendants. They're the only ones that 
+--        start out with an x position <= 1. 
+assignXY2 :: Int -> Tree a -> Int -> Int -> (Tree (a, Pos), Int)
+assignXY2 _ Empty x _ = (Empty, 1)
+assignXY2 h (Branch v l r) x y = (Branch (v, (realX, y)) left right, realX + diameter)
+          where (right, _)    = assignXY2 h r (realX + radius) (y+1)
+                realX = max x adjX
+                (left, adjX)  = assignXY2 h l (x-radius) (y+1) -- (*)
+                radius        = diameter `div` 2
+                diameter      = 2 ^ (h - y)
+
+treeLayout2 :: Tree a -> Tree (a, Pos)
+treeLayout2 t = fst $ assignXY2 h t 1 1
+    where h = findHeight t
