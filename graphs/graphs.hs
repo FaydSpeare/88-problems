@@ -28,3 +28,21 @@ humanToGraph (Edge edges) = Graph nodes filteredEdges
           notIsoPair (a, b) = a /= b
           filteredEdges = filter notIsoPair $ nubBy samePair edges
 
+
+-- assume the graph is directed
+paths :: (Eq a) => a -> a -> Friendly a -> [[a]]
+paths = helper []
+    where 
+    helper visited a b e@(Edge edges)
+        | a == b = [pure b]
+        | otherwise = map (a:) $ concatMap (\next -> helper (a:visited) next b e) nexts
+            where nexts = edges >>= (\(x, y) -> [y | x == a, y /= a, y `notElem` visited])
+
+
+cycles :: (Eq a) => a -> Friendly a -> [[a]]
+cycles x e = helper [x] e
+    where 
+    helper vs e@(Edge edges)
+        | length vs > 1 && last vs == head vs = [vs]
+        | otherwise = concatMap (\n -> helper (n:vs) e) nexts
+            where nexts = edges >>= (\(x, y) -> [y | x == head vs, y `notElem` init vs])
